@@ -1,0 +1,73 @@
+---
+- hosts: all
+  vars_files:
+    - defaults/main.yml
+  handlers:
+    - name: yum-clean-all
+      command: yum clean all
+      args:
+          warn: no
+      become: yes
+  vars:
+    ami_user: "{{ ami_user }}"
+  tasks:
+    - name: PACKER BUILD | installing required system packages
+      package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - "epel-release-{{ packages.epel_version }}"
+      become: yes
+      when:
+        - ansible_distribution == 'CentOS' and ansible_distribution_version is version_compare('7', '==')
+        
+    - name: PACKER BUILD | installing java {{ packages.java_version }} packages
+      package:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - "java-{{ packages.java_version }}-openjdk"
+        - "java-{{ packages.java_version }}-openjdk-devel"
+      become: yes
+    
+    - block:
+      
+      - name: PACKER BUILD | disabling predictable network interface names
+        lineinfile:
+          path: /etc/default/grub
+          regexp: '^GRUB_CMDLINE_LINUX='
+          line: "GRUB_CMDLINE_LINUX=\"console=tty0 crashkernel=auto console=ttyS0,115200 net.ifnames=0\""
+    
+      - name: PACKER BUILD | rebuilding grub configuration 
+        command: grub2-mkconfig -o /boot/grub2/grub.cfg
+        
+      become: yes
+      when:
+        - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'  
+      
+    - set_fact:
+        dn_hard_nofile: "{{ linux.limits.hard.config.nofile }}"
+      when:
+        - linux.limits.hard.config.nofile
+        
+    - name: PACKER BUILD | configuring max number of open files (hard)
+      lineinfile:
+        path: "{{ linux.limits.config_file }}"
+        regexp: '^\* hard nofile'
+        line: "* hard nofile {{ dn_hard_nofile }}"
+      become: yes
+      when: riot_hard_nofile is defined
+      
+    - set_fact:
+        dn_soft_nofile: "{{ linux.limits.soft.config.nofile }}"
+      when:
+        - linux.limits.soft.config.nofile
+        
+    - name: PACKER BUILD | configuring max number of open files (soft)
+      lineinfile:
+        path: "{{ linux.limits.config_file }}"
+        regexp: '^\* soft nofile'
+        line: "* soft nofile {{ dn_soft_nofile }}"
+      become: yes
+      when: dn_soft_nofile is defined
+    

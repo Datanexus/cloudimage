@@ -1,0 +1,7 @@
+{
+  "base_ami": "{{ user `image` }}",
+  "ssh_username": "centos",
+  "subnet_id": "subnet-454d902c",
+  "instance_type": "t2.micro",
+  "owner": "engineering@datanexus.org"
+}

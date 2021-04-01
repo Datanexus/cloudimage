@@ -1,0 +1,34 @@
+{
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "region": "{{user `region` }}",
+      "subnet_id": "{{user `subnet_id` }}",
+      "source_ami": "{{ user `base_ami` }}",
+      "instance_type": "{{user `instance_type` }}",
+      "ssh_username": "{{user `ssh_username`}}",
+      "ami_name": "datanexus-{{ user `base` }}-base-{{ timestamp }}",
+      "associate_public_ip_address": false,
+      "tags": {
+        "Name": "datanexus-{{ user `application` }}-instance",
+        "Application": "{{ user `application` }}",
+        "Owner": "{{ user `owner` }}",
+        "Base": "{{ user `base_ami` }}"
+      }
+    }
+  ],
+  
+  "provisioners": [
+    {
+      "type": "ansible",
+      "user": "{{ user `ssh_username` }}",
+      "playbook_file": "{{ user `source_dir` }}/roles/packer/playbook.yml",
+      "extra_arguments": [
+        "--extra-vars",
+        "ami_user={{ user `ssh_username` }}"
+      ]
+    }
+  ]
+}
+
+
